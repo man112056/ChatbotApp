@@ -1,0 +1,3 @@
+langchain-ollama
+python-dotenv # Python dependencies for secret management
+gradio # For building the web interface
