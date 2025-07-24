@@ -68,7 +68,7 @@ def chatbot(user_input, history_state, session_id=str(uuid.uuid4())):
         config={"configurable": {"session_id": session_id}}
     ).content
 
-    if history_state is None:
+    if not isinstance(history_state, list):
         history_state = []
     history_state.append((user_input, response))
 
@@ -88,6 +88,18 @@ with gr.Blocks() as demo:
     submit_button.click(
         fn=chatbot,
         inputs=[input_box, history_state, session_id],
+        outputs=[output_box, history_state, session_id]
+    )
+
+    # Add a clear history button to reset the chat history
+    clear_button = gr.Button("Clear History")
+
+    def clear_history(history_state, session_id):
+        return [], "", session_id
+
+    clear_button.click(
+        fn=clear_history,
+        inputs=[history_state, session_id],
         outputs=[output_box, history_state, session_id]
     )
 
