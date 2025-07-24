@@ -102,6 +102,59 @@ with gr.Blocks() as demo:
         inputs=[history_state, session_id],
         outputs=[output_box, history_state, session_id]
     )
+    # Add a slider for temperature control
+    temperature_slider = gr.Slider(
+        minimum=0.0,
+        maximum=1.0,
+        value=0.8,
+        step=0.01,
+        label="Temperature",
+        info="Adjust the creativity of ZenBot's responses"
+    )
 
+    # Update the chatbot function to accept temperature
+    def chatbot(user_input, history_state, session_id, temperature):
+        if user_input is None or user_input.strip() == "":
+            return history_state, "Please enter a valid question!", session_id, temperature
+
+        # Create a new ChatOllama instance with the selected temperature
+        llm_dynamic = ChatOllama(model="gemma3", temperature=temperature)
+        chain_dynamic = RunnableWithMessageHistory(
+            runnable=prompt | llm_dynamic,
+            get_session_history=get_session_history,
+            input_messages_key="input",
+            history_messages_key="history"
+        )
+
+        response = chain_dynamic.invoke(
+            {"input": user_input},
+            config={"configurable": {"session_id": session_id}}
+        ).content
+
+        if not isinstance(history_state, list):
+            history_state = []
+        history_state.append((user_input, response))
+
+        # Show response and temperature value
+        display_response = f"{response}\n\n**Temperature:** {temperature:.2f}"
+
+        return history_state, display_response, session_id, temperature
+
+    # Update the submit button to include temperature
+    submit_button.click(
+        fn=chatbot,
+        inputs=[input_box, history_state, session_id, temperature_slider],
+        outputs=[output_box, history_state, session_id]
+    )
+
+    # Update clear_history to reset temperature to default (0.8)
+    def clear_history(history_state, session_id, temperature):
+        return [], "", session_id, temperature
+
+    clear_button.click(
+        fn=clear_history,
+        inputs=[history_state, session_id, temperature_slider],
+        outputs=[output_box, history_state, session_id, temperature_slider]
+    )
 # Launch the Gradio app
 demo.launch()
