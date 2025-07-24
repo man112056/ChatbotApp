@@ -57,22 +57,33 @@ chain = RunnableWithMessageHistory(
 # It returns the updated history_state, the response, and the session_id.
 # The session_id is generated using uuid.uuid4() to ensure uniqueness
 
-def chatbot(user_input, history_state, session_id=str(uuid.uuid4())):
-    if user_input is None or user_input.strip() == "":
-        # Show error message for empty input
-        return history_state, "Please enter a valid question!", session_id
+ # Update the chatbot function to accept temperature
+def chatbot(user_input, history_state, session_id, temperature):
+        if user_input is None or user_input.strip() == "":
+            return history_state, "Please enter a valid question!", session_id, temperature
 
-# Invoke the chain with user input and session_id
-    response = chain.invoke(
-        {"input": user_input},
-        config={"configurable": {"session_id": session_id}}
-    ).content
+        # Create a new ChatOllama instance with the selected temperature
+        llm_dynamic = ChatOllama(model="gemma3", temperature=temperature)
+        chain_dynamic = RunnableWithMessageHistory(
+            runnable=prompt | llm_dynamic,
+            get_session_history=get_session_history,
+            input_messages_key="input",
+            history_messages_key="history"
+        )
 
-    if not isinstance(history_state, list):
-        history_state = []
-    history_state.append((user_input, response))
+        response = chain_dynamic.invoke(
+            {"input": user_input},
+            config={"configurable": {"session_id": session_id}}
+        ).content
 
-    return history_state, response, session_id
+        if not isinstance(history_state, list):
+            history_state = []
+        history_state.append((user_input, response))
+
+        # Show response and temperature value
+        display_response = f"{response}\n\n**Temperature:** {temperature:.2f}"
+
+        return history_state, display_response, session_id, temperature
 
 
 # Set up the Gradio interface
@@ -112,33 +123,7 @@ with gr.Blocks() as demo:
         info="Adjust the creativity of ZenBot's responses"
     )
 
-    # Update the chatbot function to accept temperature
-    def chatbot(user_input, history_state, session_id, temperature):
-        if user_input is None or user_input.strip() == "":
-            return history_state, "Please enter a valid question!", session_id, temperature
 
-        # Create a new ChatOllama instance with the selected temperature
-        llm_dynamic = ChatOllama(model="gemma3", temperature=temperature)
-        chain_dynamic = RunnableWithMessageHistory(
-            runnable=prompt | llm_dynamic,
-            get_session_history=get_session_history,
-            input_messages_key="input",
-            history_messages_key="history"
-        )
-
-        response = chain_dynamic.invoke(
-            {"input": user_input},
-            config={"configurable": {"session_id": session_id}}
-        ).content
-
-        if not isinstance(history_state, list):
-            history_state = []
-        history_state.append((user_input, response))
-
-        # Show response and temperature value
-        display_response = f"{response}\n\n**Temperature:** {temperature:.2f}"
-
-        return history_state, display_response, session_id, temperature
 
     # Update the submit button to include temperature
     submit_button.click(
