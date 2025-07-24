@@ -57,17 +57,22 @@ chain = RunnableWithMessageHistory(
 # It returns the updated history_state, the response, and the session_id.
 # The session_id is generated using uuid.uuid4() to ensure uniqueness
 
-def chatbot(user_input,history_state,session_id=str(uuid.uuid4())):
+def chatbot(user_input, history_state, session_id=str(uuid.uuid4())):
+    if user_input is None or user_input.strip() == "":
+        # Show error message for empty input
+        return history_state, "Please enter a valid question!", session_id
+
+# Invoke the chain with user input and session_id
     response = chain.invoke(
         {"input": user_input},
         config={"configurable": {"session_id": session_id}}
     ).content
-    
-    if  history_state is None:
-        history_state = [] 
+
+    if history_state is None:
+        history_state = []
     history_state.append((user_input, response))
 
-    return history_state,history_state,session_id 
+    return history_state, response, session_id
 
 
 # Set up the Gradio interface
